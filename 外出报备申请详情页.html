@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>外出报备申请详情</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    background: #ededed;
+    color: #333;
+    display: flex;
+    justify-content: center;
+  }
+  .page { width: 100%; max-width: 480px; min-height: 100vh; background: #fff; overflow-y: auto; }
+
+  /* ===== 顶部导航栏 ===== */
+  .navbar {
+    position: sticky; top: 0; z-index: 100; background: #fff; height: 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; border-bottom: 0.5px solid #eee;
+  }
+  .navbar .nav-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+  .navbar .nav-title { font-size: 17px; font-weight: 600; color: #000; }
+
+  /* ===== 申请标题栏 ===== */
+  .apply-title-bar { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 12px; }
+  .apply-title-bar .title { font-size: 20px; font-weight: 700; color: #000; }
+  .apply-title-bar .status { font-size: 15px; color: #52c41a; font-weight: 500; }
+
+  /* ===== 申请人基础信息栏 ===== */
+  .applicant-bar { display: flex; align-items: center; padding: 8px 16px 16px; }
+  .applicant-bar .avatar { width: 40px; height: 40px; border-radius: 6px; margin-right: 10px; flex-shrink: 0; overflow: hidden; }
+  .applicant-bar .info { flex: 1; min-width: 0; }
+  .applicant-bar .name { font-size: 15px; color: #333; font-weight: 500; margin-bottom: 3px; }
+  .applicant-bar .meta { font-size: 12.5px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ===== 表单模块 ===== */
+  .form-section { padding: 4px 16px 8px; }
+  .field { margin-bottom: 18px; }
+  .field-label { display: flex; align-items: center; font-size: 15.5px; font-weight: 600; color: #1a1a1a; margin-bottom: 9px; }
+  .field-label .required { color: #f5222d; margin-right: 4px; font-size: 15px; }
+  .field-hint { font-size: 13px; color: #999; font-weight: 400; margin-left: 2px; }
+  .field-input {
+    display: flex; align-items: center;
+    background: #f2f2f2; border-radius: 8px; padding: 13px 14px;
+    font-size: 15px; color: #444; min-height: 46px; line-height: 1.4;
+    word-break: break-all; outline: none; border: 1px solid transparent;
+  }
+  .field-input:focus-within { border-color: #d9d9d9; background: #fafafa; }
+  input.field-input, input.bare-input {
+    width: 100%; border: none; background: transparent; outline: none;
+    font-family: inherit; font-size: 15px; color: #444; padding: 0;
+  }
+  input::placeholder { color: #bbb; font-weight: 400; }
+  .field-input[contenteditable]:empty::before { content: attr(data-placeholder); color: #bbb; }
+
+  /* 姓名 tag 值 */
+  .person-tag { display: inline-flex; align-items: center; min-width: 150px; }
+  .person-tag .avatar { width: 28px; height: 28px; border-radius: 4px; margin-right: 7px; overflow: hidden; flex-shrink: 0; }
+
+  /* ===== 头像占位 ===== */
+  .avatar-photo {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #d8cfc4, #b8aa98);
+    color: #fff; font-size: 15px; font-weight: 600;
+    transition: none;
+  }
+  .avatar-photo.small { font-size: 12px; }
+  .avatar-photo.circle { border-radius: 50%; }
+
+  /* ===== 流程时间线模块 ===== */
+  .section-divider { height: 8px; background: #f0f0f0; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; }
+  .section-header .sec-title { font-size: 17px; font-weight: 600; color: #000; }
+  .section-header .sec-icon { color: #1677ff; }
+  .timeline { padding: 4px 16px 24px; }
+  .timeline-node { display: flex; }
+  .node-left { width: 48px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; margin-right: 12px; }
+  .node-avatar {
+    position: relative; width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 13px; font-weight: 600; flex-shrink: 0; overflow: visible;
+  }
+  .node-avatar .avatar-img { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; }
+  .avatar-blue { background: #1677ff; }
+  .check-badge {
+    position: absolute; right: -4px; bottom: -2px; width: 16px; height: 16px; border-radius: 50%;
+    background: #52c41a; border: 2px solid #fff; display: flex; align-items: center; justify-content: center;
+  }
+  .check-badge svg { width: 9px; height: 9px; }
+  .node-line { width: 2px; flex: 1; background: #e8e8e8; margin-top: 4px; min-height: 16px; }
+  .node-content { flex: 1; min-width: 0; padding-bottom: 20px; }
+  .node-hr { height: 1px; background: #ebebeb; margin: 0 0 14px; }
+  .node-row1 { display: flex; justify-content: space-between; align-items: baseline; }
+  .node-title { font-size: 15.5px; font-weight: 600; color: #1a1a1a; }
+  .node-time { font-size: 13px; color: #bbb; flex-shrink: 0; margin-left: 8px; }
+  .node-desc { margin-top: 5px; font-size: 14.5px; color: #666; display: flex; align-items: center; justify-content: space-between; }
+  .node-desc .agree { color: #52c41a; margin-left: 6px; }
+  .node-desc .arrow { color: #bbb; font-size: 12px; margin-left: 8px; }
+  .sub-node { display: flex; align-items: center; background: #fafafa; border-radius: 8px; padding: 8px 10px; margin-top: 10px; }
+  .sub-node .sub-avatar {
+    width: 34px; height: 34px; border-radius: 50%; background: #1677ff; color: #fff;
+    font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+    margin-right: 10px; flex-shrink: 0;
+  }
+  .sub-node.plain { background: transparent; padding: 8px 0 0; }
+  .sub-node .sub-name.dark { color: #1a1a1a; }
+  .sub-node .sub-info { flex: 1; }
+  .sub-node .sub-name { font-size: 14.5px; color: #52c41a; font-weight: 500; }
+  .sub-node .sub-result { font-size: 13.5px; color: #52c41a; margin-top: 2px; }
+  .sub-node .sub-time { font-size: 13px; color: #bbb; }
+
+  /* ===== 底部留白（原撤销按钮区域） ===== */
+  .btn-area { padding: 8px 16px 20px; min-height: 60px; }
+
+  /* ===== 评论区 ===== */
+  .comment-section { border-top: 0.5px solid #eee; padding: 16px; }
+  .comment-empty { text-align: center; color: #bfbfbf; font-size: 15px; padding: 36px 0; }
+
+  /* ===== 数据日志模块 ===== */
+  .log-section { border-top: 0.5px solid #eee; padding: 16px 16px 30px; }
+  .log-card { background: #fafafa; border-radius: 10px; padding: 13px 14px; margin-bottom: 12px; }
+  .log-card .log-row1 { display: flex; align-items: center; font-size: 14px; flex-wrap: wrap; row-gap: 4px; }
+  .log-card .log-avatar {
+    width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 11px; font-weight: 600; margin-right: 9px; flex-shrink: 0; overflow: hidden;
+  }
+  .log-card .log-name { color: #1677ff; }
+  .log-card .log-action { color: #52c41a; margin: 0 2px; }
+  .log-card .log-text { color: #333; }
+  .log-card .log-time { color: #999; margin-left: 4px; font-size: 13px; }
+  .log-card .log-detail { margin-top: 12px; font-size: 14px; color: #333; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 顶部导航栏 -->
+  <header class="navbar">
+    <div class="nav-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M15 4L7 12l8 8" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="nav-title">详情</div>
+    <div class="nav-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </div>
+  </header>
+
+  <!-- 申请标题栏 -->
+  <div class="apply-title-bar">
+    <div class="title">外出报备申请</div>
+    <div class="status">[已通过]</div>
+  </div>
+
+  <!-- 申请人基础信息栏 -->
+  <div class="applicant-bar">
+    <div class="avatar"><div class="avatar-photo js-avatar"></div></div>
+    <div class="info">
+      <div class="name js-applicant-name" style="color:#bbb;">姓名</div>
+      <div class="meta" id="applicant-meta">学生</div>
+    </div>
+  </div>
+
+  <!-- 表单字段模块 -->
+  <div class="form-section">
+
+    <div class="field">
+      <div class="field-label">编号</div>
+      <div class="field-input"><input id="f-no" class="bare-input" type="text" value="" placeholder="自动生成" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label"><span class="required">*</span>姓名</div>
+      <div class="person-tag">
+        <div class="avatar"><div class="avatar-photo small js-avatar"></div></div>
+        <input id="f-name" class="bare-input" type="text" value="" placeholder="请输入姓名" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">身份证号</div>
+      <div class="field-input"><input id="f-idcard" class="bare-input" type="text" value="" placeholder="请输入身份证号" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label"><span class="required">*</span>学号</div>
+      <div class="field-input"><input id="f-sid" class="bare-input" type="text" value="" placeholder="请输入学号" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">院系</div>
+      <div class="field-input"><input id="f-college" class="bare-input" type="text" value="智能制造学院" placeholder="请输入院系" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">专业</div>
+      <div class="field-input"><input id="f-major" class="bare-input" type="text" value="计算机科学与技术" placeholder="请输入专业" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">班级</div>
+      <div class="field-input"><input id="f-class" class="bare-input" type="text" value="计算机2522" placeholder="请输入班级" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label"><span class="required">*</span>请假类型</div>
+      <div class="field-input"><input id="f-leavetype" class="bare-input" type="text" value="日常无课" placeholder="请选择请假类型" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">辅导员姓名</div>
+      <div class="field-input" contenteditable="true" spellcheck="false">马悦</div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">辅导员工号</div>
+      <div class="field-input" contenteditable="true" spellcheck="false">T515</div>
+    </div>
+
+    <div class="field">
+      <div class="field-label"><span class="required">*</span>外出类型</div>
+      <div class="field-input"><input id="f-type" class="bare-input" type="text" value="事假" placeholder="请选择外出类型" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label"><span class="required">*</span>请假具体原因</div>
+      <div class="field-input"><input id="f-reason" class="bare-input" type="text" value="买东西" placeholder="请输入请假具体原因" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">证明材料上传</div>
+      <div class="field-input"><input id="f-proof" class="bare-input" type="text" value="" placeholder="暂无数据" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label"><span class="required">*</span>是否出校</div>
+      <div class="field-input" contenteditable="true" spellcheck="false">是</div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">是否出市</div>
+      <div class="field-input" contenteditable="true" spellcheck="false">否</div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">是否有课</div>
+      <div class="field-input" contenteditable="true" spellcheck="false">否</div>
+    </div>
+
+    <div class="field">
+      <div class="field-label"><span class="required">*</span>外出开始时间</div>
+      <div class="field-input"><input id="f-start" class="bare-input js-time" type="text" value="" placeholder="YYYY-MM-DD HH:mm" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label"><span class="required">*</span>外出结束时间</div>
+      <div class="field-input"><input id="f-end" class="bare-input js-time" type="text" value="" placeholder="YYYY-MM-DD HH:mm" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label"><span class="required">*</span>外出时长<span class="field-hint">单位：天</span></div>
+      <div class="field-input"><input id="f-duration" class="bare-input" type="text" value="" autocomplete="off"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label"><span class="required">*</span>外出申请时间</div>
+      <div class="field-input"><input id="f-apply" class="bare-input js-time" type="text" value="" autocomplete="off"></div>
+    </div>
+
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- 审批流程时间线 -->
+  <div class="section-header"><div class="sec-title">流程</div></div>
+  <div class="timeline">
+
+    <!-- 发起申请 -->
+    <div class="timeline-node">
+      <div class="node-left">
+        <div class="node-avatar">
+          <div class="avatar-img"><div class="avatar-photo js-avatar"></div></div>
+          <div class="check-badge"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.5L5 9l4.5-5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="node-line"></div>
+      </div>
+      <div class="node-content">
+        <div class="node-row1">
+          <div class="node-title">发起申请</div>
+          <div class="node-time" id="node-create-time">--</div>
+        </div>
+        <div class="node-desc"><span>我</span></div>
+      </div>
+    </div>
+
+    <!-- 辅导员 -->
+    <div class="timeline-node">
+      <div class="node-left">
+        <div class="node-avatar avatar-blue">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 18c0-3 2.5-5 5.5-5s5.5 2 5.5 5v.5h-11V18z"/><circle cx="16.5" cy="9" r="2.4" opacity=".85"/><path d="M15.2 13.3c2.8.2 5.3 2 5.3 4.7v.5h-4.2c-.2-2.2-1.4-4-3-5.1.6-.1 1.2-.1 1.9-.1z" opacity=".85"/></svg>
+          <div class="check-badge"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.5L5 9l4.5-5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="node-line"></div>
+      </div>
+      <div class="node-content">
+        <div class="node-hr"></div>
+        <div class="node-row1">
+          <div class="node-title">辅导员</div>
+          <div class="node-time" id="node-teacher-time">--</div>
+        </div>
+        <div class="node-desc">
+          <span><span>辅导员角色或签</span><span class="agree">同意</span></span>
+          <span class="arrow">⌃</span>
+        </div>
+        <div class="sub-node">
+          <div class="sub-avatar">马悦</div>
+          <div class="sub-info">
+            <div class="sub-name">马悦</div>
+            <div class="sub-result">同意</div>
+          </div>
+          <div class="sub-time" id="node-sub-time">--</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 学工处 -->
+    <div class="timeline-node">
+      <div class="node-left">
+        <div class="node-avatar avatar-blue">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M3.4 20.4l17.5-8.4c.8-.4.8-1.5 0-1.9L3.4 1.7c-.7-.3-1.4.3-1.3 1L3.3 11c.05.4.4.7.8.7h7.2c.4 0 .8.3.8.8s-.4.8-.8.8H4.1c-.4 0-.75.3-.8.7l-1.2 5.4c-.1.7.6 1.3 1.3 1z"/></svg>
+          <div class="check-badge"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.5L5 9l4.5-5.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+      </div>
+      <div class="node-content">
+        <div class="node-hr"></div>
+        <div class="node-row1">
+          <div class="node-title">抄送人</div>
+          <div class="node-time" id="node-office-time">--</div>
+        </div>
+        <div class="node-desc">
+          <span>抄送1人，已读0人</span>
+          <span class="arrow">⌃</span>
+        </div>
+        <div class="sub-node plain">
+          <div class="sub-avatar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 18c0-3 2.5-5 5.5-5s5.5 2 5.5 5v.5h-11V18z"/><circle cx="16.5" cy="9" r="2.4" opacity=".85"/><path d="M15.2 13.3c2.8.2 5.3 2 5.3 4.7v.5h-4.2c-.2-2.2-1.4-4-3-5.1.6-.1 1.2-.1 1.9-.1z" opacity=".85"/></svg>
+          </div>
+          <div class="sub-info">
+            <div class="sub-name dark">班委</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- 底部白色留白区域 -->
+  <div class="btn-area"></div>
+
+  <!-- 评论区 -->
+  <div class="comment-section">
+    <div class="section-header" style="padding:0 0 4px;">
+      <div class="sec-title">评论</div>
+      <div class="sec-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z" stroke="#1677ff" stroke-width="1.8" stroke-linejoin="round"/><path d="M14.5 6.5l3 3" stroke="#1677ff" stroke-width="1.8"/></svg>
+      </div>
+    </div>
+    <div class="comment-empty">暂无评论</div>
+  </div>
+
+  <!-- 数据日志模块 -->
+  <div class="log-section">
+    <div class="section-header" style="padding:0 0 14px;">
+      <div class="sec-title">数据日志</div>
+      <div class="sec-icon">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke="#1677ff" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="#1677ff" stroke-width="1.8"/><path d="M15.5 18.5l2 2 4-4.5" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+
+    <div class="log-card">
+      <div class="log-row1">
+        <div class="log-avatar" style="background:#1677ff;">马悦</div>
+        <span><span class="log-name">马悦</span> <span class="log-action">处理</span> <span class="log-text">了这条数据</span> <span class="log-time" id="log-handle-time">--</span></span>
+      </div>
+      <div class="log-detail">进行了 同意 操作</div>
+    </div>
+
+    <div class="log-card">
+      <div class="log-row1">
+        <div class="log-avatar"><div class="avatar-photo small js-avatar" style="border-radius:50%;"></div></div>
+        <span><span class="log-name js-applicant-name" style="color:#bbb;">姓名</span> <span class="log-action">创建</span> <span class="log-text">了这条数据</span> <span class="log-time" id="log-create-time">--</span></span>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var MIN = 60 * 1000, DAY = 24 * 60 * MIN;
+
+  // ---- 时间规则（相对偏移量，并保证先后顺序） ----
+  // 外出申请时间 = 打开网页时间 - 10 分钟
+  var APPLY_OFFSET = -10 * MIN;
+  // 发起申请节点 = 申请时间 + 1 分钟
+  var NODE_CREATE_OFFSET = 1 * MIN;
+  // 创建日志 = 申请时间 + 1 分 31 秒（带秒）
+  var LOG_CREATE_OFFSET = 91 * 1000;
+  // 辅导员审批 / 学工处 / 子节点 = 外出开始时间 + 12 分钟
+  var APPROVE_OFFSET = 12 * MIN;
+  // 审批时间至少比「发起申请」晚 12 分钟（保证发起早于审批）
+  var MIN_GAP = 12 * MIN;
+  // 处理日志（带秒）= 审批时间 + 8 秒，且必须晚于创建日志
+  var LOG_HANDLE_OFFSET = 8 * 1000;
+
+  // ---- 编号规则：按日期线性推算 ----
+  // 锚点1：2026-10-19 = 34332；锚点2：2026-10-27 = 37891
+  // 日均增量 = (37891-34332)/8 = 444.875，向后外推
+  var NO_A1_Y = 2026, NO_A1_M = 9,  NO_A1_D = 19, NO_A1 = 34332;
+  var NO_A2_Y = 2026, NO_A2_M = 9,  NO_A2_D = 27, NO_A2 = 37891;
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtMin(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+      ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function fmtSec(d) { return fmtMin(d) + ':' + pad(d.getSeconds()); }
+
+  // 容错解析：YYYY-MM-DD HH:mm[:ss]，分隔符支持 - / . 年月日
+  function parseTime(s) {
+    if (!s) return null;
+    var m = String(s).trim().replace(/\s+/g, ' ').match(
+      /^(\d{4})[-\/.年]\s?(\d{1,2})[-\/.月]\s?(\d{1,2})[日]?[ T]*(\d{1,2}):(\d{2})(?::(\d{2}))?/
+    );
+    if (!m) return null;
+    var d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], m[6] ? +m[6] : 0);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // 编号：以两个锚点日期线性推算（同一天结果恒定），按申请时间所在日期计算
+  function dayIndex(d) { return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000); }
+  function calcNo(d) {
+    var t = dayIndex(d);
+    var a1 = dayIndex(new Date(NO_A1_Y, NO_A1_M, NO_A1_D));
+    var a2 = dayIndex(new Date(NO_A2_Y, NO_A2_M, NO_A2_D));
+    var rate = (NO_A2 - NO_A1) / (a2 - a1); // 每天增量
+    var n = Math.round(NO_A1 + (t - a1) * rate);
+    if (n < 0) n = 0;
+    var s = String(n);
+    while (s.length < 9) s = '0' + s;
+    return s;
+  }
+
+  var nameEl = $('f-name');
+  var startEl = $('f-start'), endEl = $('f-end'), durEl = $('f-duration'), applyEl = $('f-apply');
+  var noEl = $('f-no'), sidEl = $('f-sid'), collegeEl = $('f-college');
+  var majorEl = $('f-major'), classEl = $('f-class'), metaEl = $('applicant-meta');
+  var avatars = document.querySelectorAll('.js-avatar');
+  var nameLabels = document.querySelectorAll('.js-applicant-name');
+  var noEdited = false; // 用户手动改过编号后不再自动覆盖
+
+  // 头像 = 姓名第一个字
+  function refreshName() {
+    var v = nameEl.value.trim();
+    var first = v ? v.charAt(0) : '';
+    for (var i = 0; i < avatars.length; i++) avatars[i].textContent = first;
+    for (var j = 0; j < nameLabels.length; j++) {
+      nameLabels[j].textContent = v || '姓名';
+      nameLabels[j].style.color = v ? '' : '#bbb';
+    }
+  }
+
+  // 顶部信息行：[学号] 学生\院系\专业\班级
+  function refreshProfile() {
+    var sid = sidEl.value.trim();
+    var parts = [collegeEl.value.trim(), majorEl.value.trim(), classEl.value.trim()]
+      .filter(function (v) { return v; });
+    var txt = (sid ? sid + ' ' : '') + '学生';
+    if (parts.length) txt += '\\' + parts.join('\\');
+    metaEl.textContent = txt;
+  }
+
+  function refresh() {
+    var apply = parseTime(applyEl.value);
+    var createLog = null, nodeCreate = null;
+    if (apply) {
+      nodeCreate = new Date(apply.getTime() + NODE_CREATE_OFFSET);
+      createLog = new Date(apply.getTime() + LOG_CREATE_OFFSET);
+      $('node-create-time').textContent = fmtMin(nodeCreate);
+      $('log-create-time').textContent = fmtSec(createLog);
+      if (!noEdited) noEl.value = calcNo(apply);
+    }
+
+    var s = parseTime(startEl.value), e = parseTime(endEl.value);
+    // 外出时长 =（结束 - 开始）/ 1 天，保留 1 位小数
+    if (s && e && e > s) {
+      durEl.value = (Math.round((e - s) / DAY * 10) / 10).toFixed(1);
+    } else {
+      durEl.value = '';
+    }
+
+    // 审批时间 = 外出开始时间 + 12 分钟，且必须晚于「发起申请」12 分钟以上
+    var approve = null;
+    if (s) approve = new Date(s.getTime() + APPROVE_OFFSET);
+    if (nodeCreate) {
+      var minApprove = new Date(nodeCreate.getTime() + MIN_GAP);
+      if (!approve || approve < minApprove) approve = minApprove;
+    } else if (apply) {
+      approve = new Date(apply.getTime() + 800 * MIN);
+    }
+    if (approve) {
+      var t = fmtMin(approve);
+      $('node-teacher-time').textContent = t;
+      $('node-office-time').textContent = t;
+      $('node-sub-time').textContent = t;
+      // 处理日志必须晚于创建日志
+      var handle = new Date(approve.getTime() + LOG_HANDLE_OFFSET);
+      if (createLog && handle <= createLog) handle = new Date(createLog.getTime() + LOG_HANDLE_OFFSET);
+      $('log-handle-time').textContent = fmtSec(handle);
+    }
+  }
+
+  // 初始化：申请时间 = 现在 - 10 分钟；默认开始/结束时间便于演示
+  var now = new Date();
+  applyEl.value = fmtMin(new Date(now.getTime() + APPLY_OFFSET));
+  var start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
+  startEl.value = fmtMin(start);
+  endEl.value = fmtMin(new Date(start.getTime() + 4 * 60 * MIN));
+
+  nameEl.addEventListener('input', refreshName);
+  [startEl, endEl, applyEl].forEach(function (el) {
+    el.addEventListener('input', refresh);
+    el.addEventListener('change', refresh);
+  });
+  [sidEl, collegeEl, majorEl, classEl].forEach(function (el) {
+    el.addEventListener('input', refreshProfile);
+    el.addEventListener('change', refreshProfile);
+  });
+  noEl.addEventListener('input', function () { noEdited = true; });
+
+  refreshName();
+  refreshProfile();
+  refresh();
+})();
+</script>
+</body>
+</html>
